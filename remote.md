@@ -1,4 +1,4 @@
 This is a remotely created file.
-then added a line\n
+then added a line<br>
 stuff
 
