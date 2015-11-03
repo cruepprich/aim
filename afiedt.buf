@@ -1,2 +1,0 @@
-select table_name from dba_tables where owner = 'APEX_050000' and table_name like '%DICT%'
-/
