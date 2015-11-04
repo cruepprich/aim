@@ -1,0 +1,561 @@
+
+--------------------------------------------------------
+--  DDL for Package DS_MGMT
+--------------------------------------------------------
+prompt create package ds_mgmt
+
+  CREATE OR REPLACE PACKAGE DS_MGMT AS
+    -- GET DBaaS Cloud Configuration
+    FUNCTION discover
+        RETURN CLOB;
+    -- GET DBaaS Zones
+    FUNCTION zones
+        RETURN CLOB;
+    -- GET DBaaS Service Templates
+    FUNCTION service_templates
+        RETURN CLOB;
+    -- GET DBaas Status
+    FUNCTION stat (l_req_id IN NUMBER)
+        RETURN CLOB;
+    -- DELETE DBaaS Database
+    FUNCTION delete_db (l_req_id IN NUMBER)
+        RETURN CLOB;
+    -- CREATE SMALL DBaaS Database
+    FUNCTION create_small_db (l_db_name IN VARCHAR2, l_db_desc IN VARCHAR2,
+                                    l_db_username IN VARCHAR2, l_db_passwd IN VARCHAR2,
+                                    l_srvc_name IN VARCHAR2, l_db_sid IN VARCHAR2)
+        RETURN CLOB;
+    -- PARSE Status of Database
+    PROCEDURE display_stat (stat_clob IN CLOB);
+
+    -- Identified Running Databases
+    Function running_db (l_clob in CLOB)
+        RETURN NUMBER;
+
+    Function successful_create (l_clob in CLOB)
+        RETURN dbms_sql.varchar2_table;
+
+    -- CREATE DBaaS Database via Template
+    FUNCTION create_db (l_db_name IN VARCHAR2, l_db_desc IN VARCHAR2,
+                                            l_db_username IN VARCHAR2, l_db_passwd IN VARCHAR2,
+                                            l_srvc_name IN VARCHAR2, l_db_sid IN VARCHAR2,
+                                            l_dbplatformtemplate IN VARCHAR2)
+        RETURN CLOB;
+
+     -- STARTUP and SHUTDOWN Database
+    FUNCTION db_lifecycle (l_req_id IN VARCHAR2, l_action IN VARCHAR2)
+        RETURN CLOB;
+
+END ds_mgmt;
+/
+
+
+
+
+
+
+
+
+ 
+prompt create package body ds_mgmt
+
+create or replace PACKAGE BODY DS_MGMT AS
+
+    g_clob          CLOB;
+    g_username      VARCHAR2(255) := 'cloud_demo_dbaas';
+    g_passwd        VARCHAR2(255) := 'welcome1';
+    g_wallet_path   VARCHAR2(255) := 'file:/home/oracle/clouddemo/wallet';
+    g_wallet_pwd    VARCHAR2(255) := 'Enk1tec!';
+    g_empty_headers apex_web_service.header_table;
+
+
+
+  Function discover RETURN CLOB
+    IS
+    l_method        VARCHAR2(10);
+    l_url           VARCHAR2(255);
+
+BEGIN
+
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+
+    l_url := 'https://acoem.enkitec.com:7802/em/websvcs/restful/extws/cloudservices/service/v0/ssa/em/cloud';
+    l_method := 'GET';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        --DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+
+Function zones RETURN CLOB
+    IS
+    l_method        VARCHAR2(255);
+    l_url           VARCHAR2(255);
+
+
+BEGIN
+
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+    --
+    l_url := 'https://acoem.enkitec.com:7802/em/websvcs/restful/extws/cloudservices/admin/cfw/v1/paaszones/';
+    l_method := 'GET';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        --DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+
+Function service_templates RETURN CLOB
+    IS
+    l_method        VARCHAR2(255);
+    l_url           VARCHAR2(255);
+
+
+BEGIN
+
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+    --
+    l_url := 'https://acoem.enkitec.com:7802/em/websvcs/restful/extws/cloudservices/admin/cfw/v1/servicetemplates/';
+    l_method := 'GET';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        --DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+
+Function stat (l_req_id IN NUMBER) RETURN CLOB
+    IS
+    l_method        VARCHAR2(255);
+    l_url           VARCHAR2(255);
+
+
+BEGIN
+
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+    --
+    l_url := 'https://acoem.enkitec.com:7802/em/cloud/dbaas/dbplatforminstance/byrequest/' || l_req_id;
+    l_method := 'GET';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        --DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+
+Function delete_db (l_req_id IN NUMBER) RETURN CLOB
+    IS
+    l_method        VARCHAR2(255);
+    l_url           VARCHAR2(255);
+
+
+BEGIN
+
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := 'application/oracle.com.cloud.common.DbPlatformInstance+json';
+    --
+    l_url := 'https://acoem.enkitec.com:7802/em/cloud/dbaas/dbplatforminstance/byrequest/' || l_req_id;
+    l_method := 'DELETE';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        --DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+Function create_small_db (l_db_name IN VARCHAR2, l_db_desc IN VARCHAR2,
+                                            l_db_username IN VARCHAR2, l_db_passwd IN VARCHAR2,
+                                            l_srvc_name IN VARCHAR2, l_db_sid IN VARCHAR2) RETURN CLOB
+
+    IS
+
+    l_body          CLOB;
+    l_url           VARCHAR2(255);
+    l_method        VARCHAR2(255);
+
+
+BEGIN
+
+    --
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+    --
+    apex_web_service.g_request_headers(3).name := 'Content-Type';
+    apex_web_service.g_request_headers(3).value := 'application/oracle.com.cloud.common.DbPlatformInstance+json';
+
+    l_url := 'https://acoem.enkitec.com:7802/em/cloud/dbaas/dbplatformtemplate/20465263F69329B6E05365ED090A67A7';
+    l_method := 'POST';
+
+
+    l_body := '{"zone":"/em/cloud/dbaas/zone/7F97FFAAF2AF873C6468E49011A14299","name":"' || l_db_name
+            || '","description":"' || l_db_desc || '","params":{"username":"' || l_db_username || '","password":"'
+            || l_db_passwd || '" ,"service_name":"' || l_srvc_name || '", "database_sid":"' || l_db_sid || '"}}';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_body => l_body,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        --DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+
+
+PROCEDURE display_stat (stat_clob IN CLOB)
+IS
+
+
+--declare
+j_uri varchar2(255);
+j_name varchar2(255);
+j_state varchar2(255);
+j_context_id varchar2(255);
+j_canonicalLink varchar2(255);
+j_status varchar2(255);
+j_created_on    varchar2(255);
+j_based_on varchar2(255);
+j_connection_str varchar2(255);
+j_target_type varchar2(255);
+j_destination_zone varchar2(255);
+j_last_backup varchar2(255);
+j_master_username varchar2(255);
+j_db_version varchar2(255);
+j_uptime varchar2(255);
+j_total_sga varchar2(255);
+j_available_space varchar2(255);
+j_dbplatformtemplate_id varchar2(50);
+j_zone_id varchar2(50);
+
+
+
+--loop variables
+ndex number;
+ndex2 number;
+i number;
+k number;
+
+-- JSON Data Vars
+inst_ma varchar2(25);
+j apex_json.t_values;
+l_clob   varchar2 (32767)
+        := stat_clob;
+
+begin
+    apex_json.parse(l_clob);
+    apex_json.parse(j, l_clob);
+
+    j_uri := ('uri: ' || apex_json.get_varchar2 ('uri'));
+    j_name := ('name: ' || apex_json.get_varchar2 ('name'));
+    j_state := ('DB State: ' || apex_json.get_varchar2 ('resource_state.state'));
+    j_context_id := ('Request ID: ' || apex_json.get_varchar2 ('context_id'));
+    j_status := ('DB Status: ' || apex_json.get_varchar2 ('status'));
+    j_created_on := ('Created On: ' || apex_json.get_varchar2 ('created'));
+    j_based_on := ('Template: ' || apex_json.get_varchar2 ('based_on'));
+    j_connection_str := ('Connection String: ' || apex_json.get_varchar2 ('connect_string'));
+    j_destination_zone := ('DBaaS Zone: ' || apex_json.get_varchar2 ('destination_zone'));
+    j_master_username := ('Master username: ' || apex_json.get_varchar2 ('master_username'));
+    j_db_version := ('Database Version: ' || apex_json.get_varchar2 ('ds_version'));
+    j_uptime := (apex_json.get_varchar2('measurable_attributes[1].name') || ': ' ||
+                apex_json.get_varchar2('measurable_attributes[1].value') || ' ' ||
+                apex_json.get_varchar2('measurable_attributes[1].units'));
+    j_total_sga := (apex_json.get_varchar2('measurable_attributes[2].name') || ': ' ||
+                apex_json.get_varchar2('measurable_attributes[2].value') || ' ' ||
+                apex_json.get_varchar2('measurable_attributes[2].units'));
+    j_available_space := (apex_json.get_varchar2('measurable_attributes[3].name') || ': ' ||
+                apex_json.get_varchar2('measurable_attributes[3].value') || ' ' ||
+                apex_json.get_varchar2('measurable_attributes[3].units'));
+    ndex := (apex_json.get_count(p_path=>'instances', p_values=>j));
+    for i in 1 .. ndex loop
+ /*       dbms_output.put_line (apex_json.get_varchar2 ('instances[%d].name', i) || ': '
+            || apex_json.get_varchar2 ('instances[%d].average_active_sessions', i) || ' '
+            || apex_json.get_varchar2 ('instances[%d].allocated_sessions',i) );
+*/
+            inst_ma := 'instances[' || i || ']';
+           ndex2 := (apex_json.get_count(p_path=> inst_ma || '.measurable_attributes', p_values=>j));
+            for k in 1 .. ndex2 loop
+                    dbms_output.put_line (apex_json.get_varchar2 (inst_ma||'.measurable_attributes[%d].name', k) || ': '
+                        || apex_json.get_varchar2 (inst_ma||'.measurable_attributes[%d].value', k) || ' '
+                        || apex_json.get_varchar2 (inst_ma||'.measurable_attributes[%d].units',k) );
+            end loop;
+    end loop;
+
+    dbms_output.put_line (j_uptime);
+    dbms_output.put_line (j_total_sga);
+    dbms_output.put_line (j_available_space);
+
+    j_zone_id := substr(j_destination_zone,INSTR(j_destination_zone, '/', -1, 1)+1);
+    j_dbplatformtemplate_id := substr(j_based_on,INSTR(j_based_on, '/', -1, 1)+1);
+    dbms_output.put_line ('PAAS_ZONE: ' || j_zone_id);
+    dbms_output.put_line ('Template ID: ' || j_dbplatformtemplate_id);
+end;
+
+
+Function running_db (l_clob in CLOB) RETURN NUMBER
+
+IS
+inst_state varchar2(25);
+inst_status varchar2(25);
+j apex_json.t_values;
+
+begin
+    apex_json.parse(l_clob);
+    apex_json.parse(j, l_clob);
+    inst_state := (apex_json.get_varchar2('resource_state.state')) ;
+    inst_status := (apex_json.get_varchar2('status'));
+    if (inst_state = 'READY') then
+        if (inst_status = 'RUNNING') then
+            RETURN (1);
+        elsif (inst_status = 'STOPPED') then        --Added to account for Stopped databases in the Home Screen
+           RETURN (1);                              -- Dbryant 10/19/2015 22:02
+            else RETURN(0);
+        end if;
+    end if;
+end;
+
+Function successful_create (l_clob in CLOB) RETURN dbms_sql.varchar2_table
+
+IS
+
+reqid_array dbms_sql.varchar2_table;
+running_db_array dbms_sql.varchar2_table;
+reqid varchar2(255);
+reqid2_create varchar2(255);
+ndex number;
+ndex2 number;
+i number := 1;
+k number := 1;
+l number := 1;
+m number := 1;
+j_total number;
+inst_ma varchar2(25);
+lifecycle varchar2(25);
+j apex_json.t_values;
+x apex_json.t_values;
+s_clob   varchar2 (32767);
+
+begin
+    apex_json.parse(l_clob);
+    --apex_json.parse(j, l_clob);
+    ndex := (apex_json.get_varchar2('service_requests.total'));
+    loop
+        inst_ma := (apex_json.get_varchar2('service_requests.elements[%d].status',i)) ;
+             lifecycle := (apex_json.get_varchar2('service_requests.elements[%d].lifecycle_type',i));
+             reqid := (apex_json.get_varchar2('service_requests.elements[%d].name',i));
+             if (inst_ma = 'SUCCESS') then
+               if (lifecycle = 'CREATE') then
+                    reqid2_create := regexp_substr(reqid,'[^#]+',1,2);
+                    reqid_array(k) := reqid2_create;
+                    k := k+1;
+               end if;
+            end if;
+             i := i+1;
+             if i > ndex then exit; end if;
+    end loop;
+   for l in 1 .. reqid_array.count LOOP
+        s_clob := ds_mgmt.stat(reqid_array(l));
+        ndex2 := running_db (s_clob);
+        if ndex2 = 1 then
+            running_db_array(m) := reqid_array(l);
+            m := m+1;
+        end if;
+    end Loop;
+RETURN (running_db_array);
+end;
+
+
+Function create_db (l_db_name IN VARCHAR2, l_db_desc IN VARCHAR2,
+                                            l_db_username IN VARCHAR2, l_db_passwd IN VARCHAR2,
+                                            l_srvc_name IN VARCHAR2, l_db_sid IN VARCHAR2,
+                                            l_dbplatformtemplate IN VARCHAR2) RETURN CLOB
+
+    IS
+
+    l_body          CLOB;
+    l_url           VARCHAR2(255);
+    l_method        VARCHAR2(255);
+
+
+BEGIN
+
+    --
+    apex_web_service.g_request_headers := g_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+    --
+    apex_web_service.g_request_headers(3).name := 'Content-Type';
+    apex_web_service.g_request_headers(3).value := 'application/oracle.com.cloud.common.DbPlatformInstance+json';
+
+    l_url := 'https://acoem.enkitec.com:7802/em/cloud/dbaas/dbplatformtemplate/'|| l_dbplatformtemplate;
+    l_method := 'POST';
+
+
+    l_body := '{"zone":"/em/cloud/dbaas/zone/7F97FFAAF2AF873C6468E49011A14299","name":"' || l_db_name
+            || '","description":"' || l_db_desc || '","params":{"username":"' || l_db_username || '","password":"'
+            || l_db_passwd || '" ,"service_name":"' || l_srvc_name || '", "database_sid":"' || l_db_sid || '"}}';
+
+    g_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => g_username,
+        p_password => g_passwd,
+        p_http_method => l_method,
+        p_body => l_body,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+
+        DBMS_OUTPUT.PUT_LINE(g_clob);
+        RETURN (g_clob);
+END;
+
+
+Function db_lifecycle (l_req_id IN VARCHAR2, l_action IN VARCHAR2) RETURN CLOB
+
+    IS
+
+    l_body          CLOB;
+    l_clob          CLOB;
+    l_url           VARCHAR2(255);
+    l_username      VARCHAR2(255);
+    l_passwd        VARCHAR2(255);
+    l_method        VARCHAR2(255);
+    l_wallet_path   VARCHAR2(255);
+    l_wallet_pwd    VARCHAR2(255);
+    l_empty_headers apex_web_service.header_table;
+
+  lc_scope_prefix constant varchar2(31) := 'get_db_lifecycle_result';
+
+  l_procname varchar2(30) := lc_scope_prefix;
+  l_scope logger_logs.scope%type := lc_scope_prefix || 'todo_proc_name';
+  l_params logger.tab_param;
+BEGIN
+  logger.append_param(l_params, 'l_req_id', l_req_id);
+  logger.append_param(l_params, 'l_action', l_action);
+  logger.log('start', l_scope, null, l_params);
+    --
+    apex_web_service.g_request_headers := l_empty_headers;
+    --
+    apex_web_service.g_request_headers(1).name := 'User-Agent';
+    apex_web_service.g_request_headers(1).value := 'curl/7.43.0';
+    --
+    apex_web_service.g_request_headers(2).name := 'Accept';
+    apex_web_service.g_request_headers(2).value := '*/*';
+    --
+    apex_web_service.g_request_headers(3).name := 'Content-Type';
+    apex_web_service.g_request_headers(3).value := 'application/oracle.com.cloud.common.DbPlatformInstance+json';
+
+    logger.log('finished web service',l_scope,null,l_params);
+
+    l_url := 'https://acoem.enkitec.com:7802/em/cloud/dbaas/dbplatforminstance/byrequest/' || l_req_id;
+    l_username := 'cloud_demo_dbaas';
+    l_passwd := 'welcome1';
+    l_method := 'POST';
+    l_wallet_path := 'file:/u01/OracleHomes/db/admin/emrepus/wallet';
+    l_wallet_pwd := 'Enk1tec!';
+
+    l_body := '{"operation":"' || l_action || '"}';
+
+    logger.log('about to make l_clob',l_scope,null,l_params);
+    l_clob := apex_web_service.make_rest_request(
+        p_url => l_url,
+        p_username => l_username,
+        p_password => l_passwd,
+        p_http_method => l_method,
+        p_body => l_body,
+        p_wallet_path => g_wallet_path,
+        p_wallet_pwd => g_wallet_pwd);
+    logger.log('l_clob done',l_scope,null,l_params);
+        --DBMS_OUTPUT.PUT_LINE(l_clob);
+        RETURN (l_clob);
+END;
+
+END ds_mgmt;
+/
+
+
+
+
+
+
+
+
+
+
+
